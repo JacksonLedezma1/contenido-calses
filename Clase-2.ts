@@ -1,0 +1,395 @@
+//Utility Types
+
+//------------------------------------------------------------------------------------------------------------------
+//Partial convierte todas las propiedades de un tipo en opcionales
+type UserType = { id: number, name: string, email: string }
+
+type UserDraft = Partial<UserType>
+/*
+UserType obliga a que todos los campos existan:
+const user1: UserType = { id: 1, name: "Jax", email: "test@test.com" } 
+const user2: UserType = { id: 1 } falta name y email, lo que generaria un error.
+al usar Partial, todos los campos son opcionales:
+type UserDraft = { id?: number, name?: string, email?: string }
+const draft1: UserDraft = {} //todo opcional
+const draft2: UserDraft = { name: "Jax" } //solo name
+const draft3: UserDraft = { id: 2, email: "a@a.com" } //cualquier combinación
+*/
+
+//Para finalizar el partial sirve para tener objetos incompletos, para hacer pruebas o en otros casos tener información parcial.
+
+// Configuración base de una app
+type Configuration = { port: number, host: string, useSSL: boolean }
+
+// Partial hace que todas las opciones sean opcionales
+type ConfigOptions = Partial<Configuration>
+
+// Función que recibe solo las opciones que quieras cambiar
+function createConfig(options: ConfigOptions): Configuration {
+  const defaultConfig: Configuration = {
+    port: 3000,
+    host: "localhost",
+    useSSL: false,
+  }
+
+  return { ...defaultConfig, ...options }
+}
+
+// Ejemplos
+const config1 = createConfig({}) 
+// → { port: 3000, host: "localhost", useSSL: false }
+
+const config2 = createConfig({ port: 8080 }) 
+// → { port: 8080, host: "localhost", useSSL: false }
+
+const config3 = createConfig({ host: "127.0.0.1", useSSL: true }) 
+// → { port: 3000, host: "127.0.0.1", useSSL: true }
+console.log("Partial")
+console.log("Configuraciones creadas: ")
+console.log(config1)
+console.log(config2)
+console.log(config3)
+
+
+//------------------------------------------------------------------------------------------------------------------
+//Required convierte todas las propiedades de un tipo en obligatorias
+type Config = { debug?: boolean, verbose?: boolean }
+
+type StrictConfig = Required<Config>;
+/*
+Funciona al revés de Partial: convierte todas las propiedades en obligatorias.
+En este caso que son opcionales, puedo ingresar este objeto:
+const c1: Config = {}               
+const c2: Config = { debug: true }   
+Cuando aplicas Required<Config>:
+Se vuelve equivalente a esto:
+type StrictConfig = { debug: boolean, verbose: boolean }
+const ss1: StrictConfig = {}                      // error: faltan propiedades
+const ss2: StrictConfig = { debug: true }         // falta verbose
+const ss3: StrictConfig = { debug: true, verbose: true } // válido
+*/
+
+type AuthResponse = { token?: string; refreshToken?: string; expiresIn?: number }
+type StrictAuthResponse = Required<AuthResponse>
+
+function isStrictAuthResponse(res: AuthResponse): res is StrictAuthResponse {
+  return typeof res.token === 'string'
+      && typeof res.refreshToken === 'string'
+      && typeof res.expiresIn === 'number'
+}
+
+function processAuthResponse(res: AuthResponse): StrictAuthResponse {
+  if (!isStrictAuthResponse(res)) throw new Error('Respuesta de autenticación incompleta')
+  return res // ahora TS sabe que es StrictAuthResponse
+}
+// Ejemplo de uso
+const r2: AuthResponse = { token: "abc123", refreshToken: "def456", expiresIn: 3600 }
+const valid = isStrictAuthResponse(r2)  // válido, tipo ahora es StrictAuthResponse
+console.log("")
+console.log("Required")
+console.log(r2)
+console.log(valid)
+
+//------------------------------------------------------------------------------------------------------------------
+//Readonly permite crear un tipo con todas las propiedades de otro tipo como solo lectura
+type Settings = { readonly theme: string, language: string }
+
+const appSettings: Readonly<Settings> = { theme: "dark", language: "es" } // appSettings.theme = "light"; ❌ Error
+/*
+Convierte todas las propiedades de un tipo en solo lectura (readonly).
+En este caso, theme es readonly y no se puede modificar después de la inicialización.
+En este caso al usar Readonly<Settings>, todas las propiedades se vuelven readonly:
+const appSettings: Readonly<Settings> = { theme: "dark", language: "es" }
+Ya no se puede cambiar theme ni language:
+appSettings.theme = "light";  //Error: Cannot assign to 'theme' because it is a read-only property.
+appSettings.language = "en";  //Error: Cannot assign to 'language' because it is a read-only property.
+*/
+
+// Estado del jugador
+type Player = {
+  id: number
+  name: string
+  score: number
+}
+
+// Estado congelado: no se puede modificar después de crearlo
+const initialPlayer: Readonly<Player> = {
+  id: 1,
+  name: "Jax",
+  score: 0
+}
+
+// ❌ Esto daría error porque es solo lectura
+// initialPlayer.score = 100
+
+// ✅ Función que genera un nuevo estado a partir del anterior (inmutabilidad)
+function addScore(player: Readonly<Player>, points: number): Player {
+  return { ...player, score: player.score + points }
+}
+
+// Uso
+const updatedPlayer = addScore(initialPlayer, 50)
+
+console.log("")
+console.log("Readonly")
+console.log(initialPlayer)  // { id: 1, name: "Jax", score: 0 }
+console.log(updatedPlayer)  // { id: 1, name: "Jax", score: 50 }
+
+
+//------------------------------------------------------------------------------------------------------------------
+//Pick seleccionar un subconjunto de propiedades de un tipo.
+type PersonType = { id: number; name: string; email: string };
+
+type UserPreview = Pick<PersonType, "id" | "name">;
+/*
+Es un utility type que extrae un subconjunto de propiedades de otro tipo.
+En este caso, UserPreview solo tiene las propiedades id y name de PersonType.
+type UserPreview = { id: number; name: string; }
+const user: UserPreview = { id: 1, name: "Alice" }; //Válido
+const invalidUser: UserPreview = { id: 1, email: "jax@com" }; //Error: falta name y tiene email que no está en UserPreview
+*/
+
+console.log("")
+console.log("Pick")
+
+// Tipo completo del producto
+type Product = {
+  id: number
+  name: string
+  description: string
+  price: number
+  stock: number
+}
+
+// Solo lo necesario para mostrar en un listado
+type ProductCard = Pick<Product, "id" | "name" | "price">
+
+// Ejemplo de función que usa ProductCard en vez de Product completo
+function renderProductCard(product: ProductCard) {
+  console.log(`#${product.id} - ${product.name} ($${product.price})`)
+}
+
+// Uso
+const p1: Product = {
+  id: 1,
+  name: "Laptop",
+  description: "Ultrabook de 13 pulgadas",
+  price: 1200,
+  stock: 5
+}
+
+const p2: Product ={
+  id: 2,
+  name: "Tablet",
+  description: "Tablet de 10 pulgadas",
+  price: 600,
+  stock: 10
+}
+
+// Solo pasamos lo necesario
+renderProductCard({ id: p1.id, name: p1.name, price: p1.price })
+renderProductCard({ id: p2.id, name: p2.name, price: p2.price })
+
+//------------------------------------------------------------------------------------------------------------------
+//Omit crear un tipo excluyendo ciertas propiedades de otro tipo.
+type User = { id: number; name: string; email: string };
+
+type UserPrivate = Omit<User, "email">;
+/*
+Omit es lo opuesto de Pick: en vez de elegir qué dejar, eliges qué quitar.
+type UserPrivate = { id: number; name: string } sin email
+En este caso, UserPrivate tiene todas las propiedades de User excepto email.
+
+const u1: UserPrivate = { id: 1, name: "Jax" }   //válido
+const u2: UserPrivate = { id: 1, name: "Jax", email: "a@a.com" } //error
+*/
+
+console.log("")
+console.log("Omit")
+
+// Tipo completo del registro en la base de datos
+type Task = {
+  id: number
+  title: string
+  description: string
+  completed: boolean
+}
+
+// Tipo para crear una nueva tarea (no se envía id porque lo crea la BD)
+type NewTask = Omit<Task, "id">
+
+// Función que simula guardar en la base de datos
+function createTask(task: NewTask): Task {
+  return { id: Date.now(), ...task } // el id lo genera el sistema
+}
+
+// Uso
+const task1: NewTask = { 
+  title: "Aprender TypeScript", 
+  description: "Repasar utility types", 
+  completed: false 
+}
+
+const savedTask = createTask(task1)
+
+console.log(savedTask)
+// → { id: 1694458890123, title: "Aprender TypeScript", description: "Repasar utility types", completed: false }
+
+
+//------------------------------------------------------------------------------------------------------------------
+//Record construir un tipo a partir de un conjunto de claves y un tipo de valor. Claves K y valores T
+type Roles = "admin" | "user" | "guest";
+
+type RolePermissions = Record<Roles, string[]>; // { admin: string[]; user: string[]; guest: string[] }
+/*
+Record<K, T> construye un objeto donde:
+K = conjunto de claves (normalmente un union de strings o numbers).
+T = tipo de los valores asociados.
+
+Esto es equivalente a:
+type RolePermissions = {
+  admin: string[];
+  user: string[];
+  guest: string[];
+}
+
+//Ejemplo de uso:
+const permissions: RolePermissions = {
+    admin: ["read", "write", "delete"],
+    user: ["read", "write"],
+    guest: ["read"]
+};
+
+//Si intentas omitir una clave o usar una clave extra, TypeScript marca error:
+const bad: RolePermissions = {
+    admin: ["read"],
+    user: ["read"]
+} 
+//falta "guest"
+*/
+
+console.log("")
+console.log("Record")
+// Idiomas soportados
+type Languages = "es" | "en" | "fr"
+
+// Cada clave de idioma tiene un objeto con traducciones
+type Translations = Record<Languages, { welcome: string; goodbye: string }>
+
+// Implementación de traducciones
+const translations: Translations = {
+  es: { welcome: "Bienvenido", goodbye: "Adiós" },
+  en: { welcome: "Welcome", goodbye: "Goodbye" },
+  fr: { welcome: "Bienvenue", goodbye: "Au revoir" }
+}
+
+// Función para obtener un texto traducido
+function t(lang: Languages, key: keyof Translations[Languages]): string {
+  return translations[lang][key]
+}
+
+// Uso
+console.log(t("es", "welcome")) // Bienvenido
+console.log(t("en", "goodbye")) // Goodbye
+console.log(t("fr", "welcome")) // Bienvenue
+
+
+
+//----------------------------------------------------------------------------------------------------------------
+//Exlude, Extract, NonNullable, ReturnType
+
+//Exclude construir un tipo excluyendo de un conjunto de tipos aquellos que están en otro conjunto.
+type A = string | number | boolean;
+
+type NoBoolean = Exclude<A, boolean>; 
+// Resultado: string | number
+
+/*
+Quita de A todos los tipos que estén en boolean.
+Es decir, de la unión original (string | number | boolean) se elimina boolean.
+Resultado: string | number
+*/
+type Primitive = string | number | boolean;
+
+type WithoutBoolean = Exclude<Primitive, boolean>;
+// Resultado: string | number
+
+const a: WithoutBoolean = "hola";   // válido
+const b: WithoutBoolean = 123;      // válido
+//const c: WithoutBoolean = true;     // error (boolean fue excluido)
+console.log("")
+console.log("Exclude")
+console.log(a)
+console.log(b)
+//------------------------------------------------------------------------------------------------------------------
+//Extract construir un tipo extrayendo de un conjunto de tipos aquellos que están en otro conjunto.
+type B = string | number | boolean;
+
+type OnlyNumbers = Extract<B, number | boolean>; 
+// Resultado: number | boolean
+
+/*
+Extrae de B todos los tipos que estén en number | boolean.
+Es decir, de la unión original (string | number | boolean) se mantienen solo number y boolean.
+Resultado: number | boolean
+*/
+
+type Extrae = string | number | boolean;
+
+type JustNumbers = Extract<Extrae, number | boolean>;
+// Resultado: number | boolean
+
+const x: JustNumbers = 42;     // válido
+const y: JustNumbers = false;  // válido
+//const z: JustNumbers = "hola"; // error (string no fue extraído)
+
+console.log("")
+console.log("Extract")
+console.log(x)
+console.log(y)
+
+//------------------------------------------------------------------------------------------------------------------
+//NonNullable eliminar de un tipo los valores null y undefined.
+type C = string | number | null | undefined;
+
+type NonNull = NonNullable<C>; 
+// Resultado: string | number
+
+/*
+Elimina de C los valores null y undefined.
+Es decir, de la unión original (string | number | null | undefined) se quitan null y undefined.
+Resultado: string | number
+*/
+
+type MaybeString = string | null | undefined;
+
+type SafeString = NonNullable<MaybeString>;
+// Resultado: string
+
+const s1: SafeString = "texto";  // válido
+//const s2: SafeString = null;     // error
+//const s3: SafeString = undefined;// error
+console.log("")
+console.log("NonNullable")
+console.log(s1)
+
+//------------------------------------------------------------------------------------------------------------------
+//ReturnType obtener el tipo de retorno de una función.
+function getUser() {
+  return { id: 1, name: "Jax" };
+}
+
+type user = ReturnType<typeof getUser>; 
+// Resultado: { id: number; name: string }
+/*
+Obtiene el tipo que devuelve la función getUser.
+En este caso, getUser retorna un objeto con las propiedades id y name.
+Resultado: { id: number; name: string }
+*/
+const u: user = { id: 99, name: "Ana" };   // válido
+//const u2: user = { id: 99 };               // falta name
+
+console.log("")
+console.log("ReturnType")
+console.log(u)
+//------------------------------------------------------------------------------------------------------------------
